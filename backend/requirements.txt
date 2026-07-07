@@ -1,0 +1,15 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch
+torchvision
+torchaudio
+sentence-transformers
+
+qdrant-client
+pymupdf
+mammoth
+python-docx
+python-dotenv
+boto3
+flask
+google-genai
