@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { FileText, Check, AlertCircle } from "lucide-react";
+import { FileText, Check, AlertCircle, X } from "lucide-react";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://3.109.54.35:5000";
 
@@ -10,10 +10,16 @@ const formatSize = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export default function UploadJD({ sessionId, setCandidates }) {
+export default function UploadJD({ sessionId, setCandidates, onStatusChange, resumesReady = true }) {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | uploading | success | error
   const [progress, setProgress] = useState(0); // Custom fake progress tracker %
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if (onStatusChange) onStatusChange(status);
+  }, [status, onStatusChange]);
 
   // Fake matching progress simulation hook
   useEffect(() => {
@@ -43,6 +49,7 @@ export default function UploadJD({ sessionId, setCandidates }) {
   const upload = async () => {
     if (!file || status === "uploading") return;
     setStatus("uploading");
+    setErrorMessage("");
     const formData = new FormData();
     formData.append("document", file);
     formData.append("sessionId", sessionId);
@@ -63,6 +70,9 @@ export default function UploadJD({ sessionId, setCandidates }) {
       setStatus("success");
     } catch (err) {
       setStatus("error");
+      setErrorMessage(
+        err.response?.data?.error || "Something went wrong while ranking — try again"
+      );
     }
   };
 
@@ -72,17 +82,25 @@ export default function UploadJD({ sessionId, setCandidates }) {
         <span className="text-[11px] font-mono tracking-widest uppercase text-[#0071e3] dark:text-[#2997ff] px-2 py-0.5 rounded-full bg-[#0071e3]/10 dark:bg-[#2997ff]/15">
           Step 02
         </span>
+        {status === "success" && (
+          <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#1f9d45] dark:text-[#34c759] animate-fade-in">
+            <Check size={13} /> Done
+          </span>
+        )}
       </div>
       <h3 className="hl-headline text-[22px] text-neutral-900 dark:text-white">
         Define the role
       </h3>
       <p className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400">
-        Upload the job description to rank candidates against.
+        Upload the job description (PDF or DOCX, up to 10 MB) and we’ll rank your resumes against it.
       </p>
 
       <label
-        className={`dropzone ${file ? "filled" : ""} mt-5 flex items-center gap-4 p-5 cursor-pointer relative`}
+        className={`dropzone ${file ? "filled" : ""} ${dragging ? "dragging" : ""} mt-5 flex items-center gap-4 p-5 cursor-pointer relative`}
         data-testid="upload-jd-dropzone"
+        onDragEnter={() => status !== "uploading" && setDragging(true)}
+        onDragLeave={() => setDragging(false)}
+        onDrop={() => setDragging(false)}
       >
         <input
           type="file"
@@ -96,11 +114,13 @@ export default function UploadJD({ sessionId, setCandidates }) {
             if (chosenFile.size > TEN_MB) {
               setFile(null);
               setStatus("error"); // Triggers the red error text below
+              setErrorMessage("File exceeds the 10 MB limit.");
               return;
             }
 
             setFile(chosenFile);
             setStatus("idle");
+            setErrorMessage("");
           }}
           className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
           data-testid="upload-jd-input"
@@ -113,37 +133,50 @@ export default function UploadJD({ sessionId, setCandidates }) {
             {file ? file.name : "Choose a .pdf or .docx file"}
           </div>
           <div className="text-[12px] text-neutral-500 mt-0.5">
-            {file ? formatSize(file.size) : "or drop it here"}
+            {file ? formatSize(file.size) : dragging ? "Release to add" : "or drag & drop it here"}
           </div>
         </div>
+        {file && status !== "uploading" && (
+          <button
+            type="button"
+            aria-label="Remove file"
+            title="Remove file"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setFile(null);
+              setStatus("idle");
+              setErrorMessage("");
+            }}
+            className="relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-black/5 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        )}
       </label>
+
+      {!resumesReady && status !== "uploading" && (
+        <p className="mt-3 text-[12px] text-amber-600 dark:text-amber-400 animate-fade-in">
+          Tip: finish Step 01 first so there are resumes to rank against.
+        </p>
+      )}
 
       {/* Progress Bar Display Container */}
       {status === "uploading" && (
         <div className="mt-5 space-y-2 animate-fade-in">
           <div className="flex items-center justify-between text-[12px] font-mono text-neutral-500">
             <span className="inline-flex items-center gap-2">
-              <span className="spinner" /> Scoring resumes...
+              <span className="spinner" /> Reading the job description &amp; scoring resumes…
             </span>
             <span>{progress}%</span>
           </div>
           <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#0071e3] dark:bg-[#2997ff] rounded-full transition-all duration-300 ease-out"
+              className="bar-live h-full bg-[#0071e3] dark:bg-[#2997ff] rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
-      )}
-
-      {status === "error" && (
-        <span
-          className="text-[12px] font-mono text-[#ff453a] inline-flex items-center gap-1.5"
-          data-testid="upload-jd-status-error"
-        >
-          <AlertCircle size={13} />
-          {!file ? "File exceeds 10MB limit" : "Upload failed — try again"}
-        </span>
       )}
 
       <div className="mt-6 flex items-center gap-3 flex-wrap">
@@ -161,7 +194,7 @@ export default function UploadJD({ sessionId, setCandidates }) {
             className="text-[12px] font-mono text-[#34c759] inline-flex items-center gap-1.5"
             data-testid="upload-jd-status-success"
           >
-            <Check size={13} /> Ranking ready
+            <Check size={13} className="pop-in" /> Ranking ready — see results below
           </span>
         )}
         {status === "error" && (
@@ -169,7 +202,7 @@ export default function UploadJD({ sessionId, setCandidates }) {
             className="text-[12px] font-mono text-[#ff453a] inline-flex items-center gap-1.5"
             data-testid="upload-jd-status-error"
           >
-            <AlertCircle size={13} /> Upload failed — try again
+            <AlertCircle size={13} /> {errorMessage || "Upload failed — try again"}
           </span>
         )}
       </div>

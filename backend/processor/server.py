@@ -19,7 +19,7 @@ torch.set_num_interop_threads(1)
 
 from extract_text import extract 
 from sentence_transformers import SentenceTransformer
-from qdrant_client.models import PointStruct
+from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue
 from qdrant_upload import upload_points, search, client, COLLECTION_NAME
 
 print("Loading sentence-transformer model...", flush=True)
@@ -134,6 +134,15 @@ def embedd_zip():
                     }
                 ))
             if points:
+                # Replace (not append to) this session's earlier resumes so that
+                # re-uploading a ZIP never produces duplicate candidates.
+                client.delete(
+                    collection_name=COLLECTION_NAME,
+                    points_selector=Filter(
+                        must=[FieldCondition(key="session_id", match=MatchValue(value=str(session_id)))]
+                    ),
+                    wait=True,
+                )
                 upload_points(points)
 
         if os.path.exists(extract_dir):
