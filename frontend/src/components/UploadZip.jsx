@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import axios from "axios";
 import { Upload, Check, AlertCircle } from "lucide-react";
 
-const BACKEND = "https://hire-help-backend-production.up.railway.app";
+const BACKEND = "http://localhost:5000";
 
 const formatSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;

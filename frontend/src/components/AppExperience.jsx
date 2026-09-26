@@ -4,9 +4,13 @@ import UploadZip from "@/components/UploadZip";
 import UploadJD from "@/components/UploadJD";
 
 export default function AppExperience() {
-  const [sessionId] = useState(
-    () => `session-${Math.random().toString(36).substring(2, 11)}-${Date.now()}`
-  );
+  const [sessionId] = useState(() => {
+    const cached = sessionStorage.getItem("hire_help_session_id");
+    if (cached) return cached;
+    const generated = `session-${Math.random().toString(36).substring(2, 11)}-${Date.now()}`;
+    sessionStorage.setItem("hire_help_session_id", generated);
+    return generated;
+  });
   const [candidates, setCandidates] = useState([]);
 
   const rows = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0));
