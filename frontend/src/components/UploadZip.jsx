@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import axios from "axios";
 import { Upload, Check, AlertCircle, X, Archive } from "lucide-react";
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://3.109.54.35:5000";
+const BACKEND = import.meta.env.VITE_BACKEND_URL || "/api";
 
 const formatSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
