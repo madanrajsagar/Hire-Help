@@ -24,6 +24,7 @@ from qdrant_upload import upload_points, search, client, COLLECTION_NAME
 
 print("Loading sentence-transformer model...", flush=True)
 model = SentenceTransformer("BAAI/bge-small-en-v1.5", device="cpu")
+model.max_seq_length = 256  # cap memory per resume; default 512 roughly doubles activation size
 print("Model loaded and warm!", flush=True)
 
 app = Flask(__name__)
@@ -84,7 +85,7 @@ def embedd_zip():
         return jsonify({"success": False, "error": "file path invalid"}), 400
 
     try:
-        extract_dir = "temp/extracted"
+        extract_dir = os.path.join("temp", f"extracted-{uuid.uuid4().hex}")
         if os.path.exists(extract_dir):
             shutil.rmtree(extract_dir)
         os.makedirs(extract_dir, exist_ok=True)
@@ -120,7 +121,7 @@ def embedd_zip():
                         valid_texts.append(ftext)
 
         if valid_texts:
-            all_embeddings = model.encode(valid_texts, batch_size=32, normalize_embeddings=True, show_progress_bar=False)
+            all_embeddings = model.encode(valid_texts, batch_size=8, normalize_embeddings=True, show_progress_bar=False)
             expiration_timestamp = int(time.time()) + 3600
             points = []
             for idx, filename in enumerate(valid_filenames):

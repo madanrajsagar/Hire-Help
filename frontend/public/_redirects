@@ -1,5 +1,5 @@
 # Proxy API calls to the EC2 backend so the HTTPS site never calls http:// directly
-/api/*  http://3.109.54.35:5000/:splat  200
+/api/*  http://65.0.78.222:5000/:splat  200
 
 # React Router: serve the app for every other path
 /*      /index.html                     200
